@@ -1,0 +1,60 @@
+services:
+  vllm-api:
+    container_name: vllm-api
+    image: vllm/vllm-openai:latest
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - huggingface-cache:/root/.cache/huggingface
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://0.0.0.0:8000/v1/models", "-H", "Authorization: Bearer ${VLLM_API_KEY}" ]
+      interval: 30s
+      timeout: 5s
+      retries: 20
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HUGGING_FACE_HUB_TOKEN}
+    restart: unless-stopped
+    command:
+      - "--model"
+      - "deepseek-ai/DeepSeek-R1-Distill-Llama-8B"
+      #- "--enable-reasoning" #uncomment to enable reasoning parser of vllm, but we use the one in open-webui
+      #- "--reasoning-parser"
+      #- "deepseek_r1"
+      - "--tokenizer-revision"
+      - "ebf7e8d03db3d86a442d22d30d499abb7ec27bea" # for deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+      #- "6453600843497f04e63f069049e92bf221d9e000" # older version for distil qwen 14b, because latest does not out put <think> tag at start
+      - "--api-key"
+      - "${VLLM_API_KEY}"
+  open-webui:
+    container_name: open-webui
+    image: ghcr.io/open-webui/open-webui:main
+    volumes:
+      - open-webui:/app/backend/data
+    depends_on:
+      - vllm-api
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - 'OPENAI_API_BASE_URL=http://vllm-api:8000/v1'
+      - 'OPENAI_API_KEY=${VLLM_API_KEY}'
+      - 'ENABLE_OLLAMA_API=false'
+      - 'ENABLE_RAG_WEB_SEARCH=true'
+      - 'RAG_WEB_SEARCH_ENGINE=duckduckgo'
+      - 'WEBUI_NAME=Sys11GPT'
+      - 'ADMIN_EMAIL=hello@louislepage.com'
+      - 'ENABLE_EVALUATION_ARENA_MODELS=False'
+      - 'DEFAULT_USER_ROLE=user'
+    restart: unless-stopped
+
+
+volumes:
+    huggingface-cache: {}
+    open-webui: {}

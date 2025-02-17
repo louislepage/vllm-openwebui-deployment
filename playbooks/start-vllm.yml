@@ -1,0 +1,40 @@
+- name: Deploy and run vLLM from compose file.
+  hosts: all
+  become: yes
+  collections:
+    - community.docker
+
+  vars_files:
+    - ../vars/vars.yml
+    - ../vars/vars_secret.yml
+
+  tasks:
+    - name: Create directory for vLLM compose file
+      file:
+        path: /opt/vllm/
+        state: directory
+        mode: '0755'
+
+    - name: Copy docker-compose file to remote host
+      copy:
+        src: ../docker-compose/compose.yml
+        dest: /opt/vllm/docker-compose.yml
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Generate random token for vLLM API and stor in .env file.
+      lineinfile:
+        path: /opt/vllm/.env
+        regexp: '^VLLM_API_KEY='
+        line: "VLLM_API_KEY=api-token-{{ lookup('password', '/dev/null', length=16, chars='ascii_letters,digits') }}"
+        create: yes
+
+    - name: Run Docker Compose for vLLM (Needs HUGGING_FACE_HUB_TOKEN in environment).
+      become: yes
+      become_user: 'ubuntu'
+      community.docker.docker_compose_v2:
+        project_src: /opt/vllm/
+        state: present
+      environment:
+        HUGGING_FACE_HUB_TOKEN: "{{ HUGGING_FACE_HUB_TOKEN }}"

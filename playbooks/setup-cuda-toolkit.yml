@@ -1,0 +1,50 @@
+---
+- name: Install cuda toolkit.
+  hosts: inference_server
+  become: yes
+
+  vars:
+    cuda_bin_path: '/usr/local/cuda-12.8/bin'
+
+  tasks:
+    - name: Derive cuda_repo_distro from ansible_distribution_version
+      # For example, if ansible_distribution_version == "22.04", turn that into "ubuntu2204".
+      # If ansible_distribution_version == "20.04", that becomes "ubuntu2004", etc.
+      set_fact:
+        cuda_repo_distro: "{{ 'ubuntu' ~ ansible_distribution_version.split('.')[0] ~ ansible_distribution_version.split('.')[1] }}"
+        cacheable: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Derive cuda_repo_arch from ansible_architecture
+      set_fact:
+        cuda_repo_arch: "{{ 'x86_64' if ansible_architecture in ['x86_64', 'amd64'] else 'aarch64' }}"
+        cacheable: yes
+
+    - name: Download path for this distribution and architecture.
+      debug:
+        msg: "https://developer.download.nvidia.com/compute/cuda/repos/{{ cuda_repo_distro }}/{{ cuda_repo_arch }}"
+
+    - name: Download and Install the NVIDIA cuda keyring.
+      apt:
+        deb: "https://developer.download.nvidia.com/compute/cuda/repos/{{ cuda_repo_distro }}/{{ cuda_repo_arch }}/cuda-keyring_1.1-1_all.deb"
+        state: present
+
+    - name: Update the apt cache.
+      apt:
+        update_cache: yes
+
+    - name: Install the cuda-toolkit.
+      apt:
+          name: cuda-toolkit
+          state: present
+      register: cuda_toolkit_install
+
+    - name: Reboot if cuda-toolkit was installed.
+      debug:
+        msg: "cuda-toolkit was installed, please reboot the server to enable cuda."
+      when: cuda_toolkit_install.changed
+
+    - name: Add another bin dir to system-wide $PATH.
+      copy:
+        dest: /etc/profile.d/cuda-path.sh
+        content: 'PATH=$PATH:{{ cuda_bin_path }}'

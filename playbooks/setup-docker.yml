@@ -1,0 +1,53 @@
+---
+- name: Setup docker to run vLLM with GPU.
+  hosts: inference_server
+  become: yes
+
+  vars:
+    docker_arch: 'amd64'
+
+  tasks:
+    - name: Download Docker's official GPG key
+      get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: '0644'
+
+    - name: Add Docker repository
+      copy:
+        dest: /etc/apt/sources.list.d/docker.list
+        content: |
+          deb [arch={{ docker_arch }} signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        owner: root
+        group: root
+        mode: '0644'
+
+
+    - name: Update apt cache after adding Docker repo and install docker and compose.
+      apt:
+        update_cache: yes
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          - python3-docker
+
+    - name: Install nvidia-container-toolkit.
+      apt:
+        name: nvidia-container-toolkit
+        state: present
+      register: nvidia_ctk_install
+
+    - name: Configure docker to use nvidia-container-toolkit.
+      command: "nvidia-ctk runtime configure --runtime=docker"
+      register: nvidia_ctk_configure
+      when: nvidia_ctk_install.changed
+
+    - name: Restart docker service.
+      service:
+          name: docker
+          state: restarted
+      when: nvidia_ctk_configure.changed
+
