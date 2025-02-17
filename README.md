@@ -1,10 +1,12 @@
-# Proof of concept for vllm-server-deployment
-This repo holds the ansible playbook to install vllm and all required packages on an ubuntu server.
+# Proof of concept for selfhosted LLM/GPT with vLLM and OpenwebUI
+
+This repo holds the ansible playbooks to install vllm and OpenwebUI.
 It will probably not run out of the box on your machine, but it should be a good starting point.
 
 ## Requirements
 - Ansible
 - Remote Ubuntu Server with 24.04
+- GPU with CUDA support and at least 48GB of RAM (we used Nvidia L40) 
 - SSH access to the server
 
 ## Preparation
