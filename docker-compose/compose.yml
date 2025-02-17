@@ -24,15 +24,20 @@ services:
     restart: unless-stopped
     command:
       - "--model"
-      - "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B"
+      - "unsloth/DeepSeek-R1-Distill-Llama-70B-bnb-4bit"
+      - "--quantization"
+      - "bitsandbytes"
+      - "--load-format"
+      - "bitsandbytes"
       - "--max-model-len"
-      - "60000" # 60k tokens to fit into KV cache
+      - "4000" # 4k tokens to fit into KV
       #- "--enable-reasoning" #uncomment to enable reasoning parser of vllm, but we use the one in open-webui
       #- "--reasoning-parser"
       #- "deepseek_r1"
       - "--tokenizer-revision"
+      - "d4a2af1d9c04255cfab2d7ddc3abe58ad8d42e9d" # unsloth/DeepSeek-R1-Distill-Llama-70B-bnb-4bit
       #- "ebf7e8d03db3d86a442d22d30d499abb7ec27bea" # for deepseek-ai/DeepSeek-R1-Distill-Llama-8B
-      - "6453600843497f04e63f069049e92bf221d9e000" # older version for distil qwen 14b, because latest does not out put <think> tag at start
+      #- "6453600843497f04e63f069049e92bf221d9e000" # older version for distil qwen 14b, because latest does not out put <think> tag at start
       - "--api-key"
       - "${VLLM_API_KEY}"
   open-webui:
